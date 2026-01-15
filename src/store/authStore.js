@@ -42,38 +42,45 @@ export const useAuthStore = create((set) => ({
 
   profile: null,
 
-  logout: () => {
-    
-    set({ 
-      user: null, 
-      profile: null, 
-      isAuth: false, 
-      accessToken: null, 
-      refreshToken: null 
-    });
-  
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    
-    window.location.href = "/login";
+  logout: async () => {
+    try {
+      const refreshToken = localStorage.getItem("refreshToken");
+
+      if (refreshToken) {
+        await api.post("/auth/logout", { refreshToken });
+      }
+    } catch (error) {
+      console.log(error);
+    } finally {
+      set({
+        user: null,
+        profile: null,
+        isAuth: false,
+        accessToken: null,
+        refreshToken: null,
+      });
+
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+
+      window.location.href = "/login";
+    }
   },
 
- 
-getProfile: async () => {
-  try {
+  getProfile: async () => {
+    try {
+      set({ isLoading: true });
+      const res = await api.get("/profile");
+      set({ profile: res.data, isAuth: true });
+    } catch (error) {
+      console.error(error);
 
-    set({ isLoading: true }); 
-    const res = await api.get("/profile");
-    set({ profile: res.data, isAuth: true });
-  } catch (error) {
-    console.error(error);
-  
-    if (error.response?.status === 401) {
-      set({ isAuth: false, profile: null });
-      localStorage.removeItem("accessToken");
+      if (error.response?.status === 401) {
+        set({ isAuth: false, profile: null });
+        localStorage.removeItem("accessToken");
+      }
+    } finally {
+      set({ isLoading: false });
     }
-  } finally {
-    set({ isLoading: false });
-  }
-},
+  },
 }));
